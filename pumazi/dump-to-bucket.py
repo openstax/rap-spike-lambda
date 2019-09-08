@@ -182,11 +182,11 @@ def scrape_version(id, version, host, visited_locs, book=None):
         raw_ident_hash = join_ident_hash(id, version)
         ident_hash = ':'.join([join_ident_hash(*book), join_ident_hash(id, None)])
     base_url = f'https://{host}/contents/{ident_hash}'
-
-    # FIXME: Must explicitly ask for the raw format
+    raw_postfix = '?as_collated=0'
+    baked_postfix = '?as_collated=1'
 
     # Request the RAW JSON
-    url = f'{base_url}.json'
+    url = f'{base_url}.json{raw_postfix}'
     debug(f'Requesting raw JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
     resp = requests.get(url)
     yield io.BytesIO(resp.content), f'raw-{type_}-json', [(id, version,)]
@@ -194,7 +194,7 @@ def scrape_version(id, version, host, visited_locs, book=None):
     raw_json = resp.json()
 
     # Request the RAW HTML
-    url = f'{base_url}.html'
+    url = f'{base_url}.html{raw_postfix}'
     debug(f'Requesting raw HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
     resp = requests.get(url)
     yield io.BytesIO(resp.content), f'raw-{type_}-html', [(id, version,)]
