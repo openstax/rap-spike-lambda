@@ -146,7 +146,15 @@ def scrape_version(id, version, host, visited_locs):
     resp = requests.get(url)
     yield io.BytesIO(resp.content), f'raw-book-html', [(id, version,)]
 
-    # TODO: Request the resources...
+    # Request the resources...
+    for res_entity in raw_json['resources']:
+        # Request the resource itself
+        url = f'https://{host}/resources/{res_entity["id"]}'
+        resp = requests.get(url)
+        yield io.BytesIO(resp.content), 'resource', res_entity['id']
+        # Note the resource media type
+        yield io.BytesIO(res_entity['media_type'].encode()), 'resource-media-type', res_entity['id']
+
     # TODO: Request the individual pages
 
 
