@@ -126,6 +126,49 @@ def scrape(book, host, visited_locs=VISITED_LOCS_MARKER):
     # TODO: Yield the historical versions of this book
 
 
+def flatten_tree_to_ident_hashes(item_or_tree):
+    """Flatten a tree's leaves a list of id and version values (ident_hash)"""
+    if 'contents' in item_or_tree:
+        # FYI This ignores the sub-collection identifiers
+        tree = item_or_tree
+        for i in tree['contents']:
+            yield from flatten_tree_to_ident_hashes(i)
+    else:
+        item = item_or_tree
+        yield item['id']
+
+
+test_tree = {
+    "id": "02776133-d49d-49cb-bfaa-67c7f61b25a1@9.1",
+    "contents": [
+        {"id": "301d5176-9ace-4219-b44b-85dcf781e1e3@21"},
+        {"id": "82ebb7ed-e34f-45a3-a6b0-2b3e7e941c05@9.1",
+         "contents": [
+             {"id": "1c2686fd-6e5c-417e-8340-38c9eb5e1019@16"},
+         ]},
+        {"id": "eb680355-ba88-4967-8828-64438b9979b4@9.1",
+         "contents": [
+             {"id": "0fee78e2-7da7-4f15-8627-4b6ceb783c07@16"},
+             {"id": "398667a8-7a81-514d-84cc-05a3dbf5ccd8@9"},
+             {"id": "468c7b18-daa6-45da-8276-2eec12400376@9.1",
+              "contents": [
+                  {"id": "5e0a18b4-90cd-4b10-9067-034b8bd140f4@16"},
+              ]},
+         ]},
+        {"id": "a934a123-39ea-4099-96bc-1b6c8deb55fe@21"},
+    ],
+}
+test_tree_idents = [
+    '301d5176-9ace-4219-b44b-85dcf781e1e3@21',
+    '1c2686fd-6e5c-417e-8340-38c9eb5e1019@16',
+    '0fee78e2-7da7-4f15-8627-4b6ceb783c07@16',
+    '398667a8-7a81-514d-84cc-05a3dbf5ccd8@9',
+    '5e0a18b4-90cd-4b10-9067-034b8bd140f4@16',
+    'a934a123-39ea-4099-96bc-1b6c8deb55fe@21',
+]
+assert list(flatten_tree_to_ident_hashes(test_tree)) == test_tree_idents
+
+
 def scrape_version(id, version, host, visited_locs):
     """
     """
