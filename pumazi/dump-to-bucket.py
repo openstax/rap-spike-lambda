@@ -176,28 +176,52 @@ def scrape_version(id, version, host, visited_locs, book=None):
         is_book = True
         type_ = 'book'
         raw_ident_hash = ident_hash = join_ident_hash(id, version)
+        ident_hash_seq = [(id, version)]
     else:
         is_book = False
         type_ = 'page'
         raw_ident_hash = join_ident_hash(id, version)
         ident_hash = ':'.join([join_ident_hash(*book), join_ident_hash(id, None)])
-    base_url = f'https://{host}/contents/{ident_hash}'
+        ident_hash_seq = [book, (id, version,)]
+
+    base_url = f'https://{host}/contents'
+    base_raw_url = f'{base_url}/{raw_ident_hash}'
+    base_baked_url = f'{base_url}/{ident_hash}'
     raw_postfix = '?as_collated=0'
-    baked_postfix = '?as_collated=1'
 
     # Request the RAW JSON
-    url = f'{base_url}.json{raw_postfix}'
-    debug(f'Requesting raw JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+    temperature = 'raw'
+    url = f'{base_raw_url}.json{raw_postfix}'
+    debug(f'Requesting {temperature} JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
     resp = requests.get(url)
-    yield io.BytesIO(resp.content), f'raw-{type_}-json', [(id, version,)]
+    yield io.BytesIO(resp.content), f'{temperature}-{type_}-json', ident_hash_seq
+
     # Save the raw json for later
     raw_json = resp.json()
 
-    # Request the RAW HTML
-    url = f'{base_url}.html{raw_postfix}'
-    debug(f'Requesting raw HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+    # Request the BAKED JSON
+    temperature = 'baked'
+    url = f'{base_baked_url}.json'
+    debug(f'Requesting {temperature} JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
     resp = requests.get(url)
-    yield io.BytesIO(resp.content), f'raw-{type_}-html', [(id, version,)]
+    yield io.BytesIO(resp.content), f'{temperature}-{type_}-json', ident_hash_seq
+
+    # Save the baked json for later
+    baked_json = resp.json()
+
+    # Request the RAW HTML
+    temperature = 'raw'
+    url = f'{base_raw_url}.html{raw_postfix}'
+    debug(f'Requesting {temperature} HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+    resp = requests.get(url)
+    yield io.BytesIO(resp.content), f'{temperature}-{type_}-html', ident_hash_seq
+
+    # Request the BAKED HTML
+    temperature = 'baked'
+    url = f'{base_baked_url}.html'
+    debug(f'Requesting {temperature} HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+    resp = requests.get(url)
+    yield io.BytesIO(resp.content), f'{temperature}-{type_}-html', ident_hash_seq
 
     # Request the resources...
     for res_entity in raw_json['resources']:
