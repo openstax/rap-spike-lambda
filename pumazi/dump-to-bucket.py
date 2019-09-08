@@ -169,36 +169,51 @@ test_tree_idents = [
 assert list(flatten_tree_to_ident_hashes(test_tree)) == test_tree_idents
 
 
-def scrape_version(id, version, host, visited_locs):
+def scrape_version(id, version, host, visited_locs, book=None):
     """
     """
-    ident_hash = join_ident_hash(id, version)
+    if book is None:
+        is_book = True
+        type_ = 'book'
+        raw_ident_hash = ident_hash = join_ident_hash(id, version)
+    else:
+        is_book = False
+        type_ = 'page'
+        raw_ident_hash = join_ident_hash(id, version)
+        ident_hash = ':'.join([join_ident_hash(*book), join_ident_hash(id, None)])
     base_url = f'https://{host}/contents/{ident_hash}'
 
-    # Request the JSON
+    # FIXME: Must explicitly ask for the raw format
+
+    # Request the RAW JSON
     url = f'{base_url}.json'
-    debug(f'Requesting {T.yellow}{url}{T.normal}')
+    debug(f'Requesting raw JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
     resp = requests.get(url)
-    yield io.BytesIO(resp.content), f'raw-book-json', [(id, version,)]
+    yield io.BytesIO(resp.content), f'raw-{type_}-json', [(id, version,)]
     # Save the raw json for later
     raw_json = resp.json()
 
-    # Request the HTML
+    # Request the RAW HTML
     url = f'{base_url}.html'
-    debug(f'Requesting {T.yellow}{url}{T.normal}')
+    debug(f'Requesting raw HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
     resp = requests.get(url)
-    yield io.BytesIO(resp.content), f'raw-book-html', [(id, version,)]
+    yield io.BytesIO(resp.content), f'raw-{type_}-html', [(id, version,)]
 
     # Request the resources...
     for res_entity in raw_json['resources']:
         # Request the resource itself
         url = f'https://{host}/resources/{res_entity["id"]}'
+        debug(f'Requesting {T.bold}resource{T.normal} at {T.yellow}{url}{T.normal}')
         resp = requests.get(url)
         yield io.BytesIO(resp.content), 'resource', res_entity['id']
         # Note the resource media type
         yield io.BytesIO(res_entity['media_type'].encode()), 'resource-media-type', res_entity['id']
 
-    # TODO: Request the individual pages
+    if is_book:
+        # Request the individual raw pages
+        for page_ident_hash in flatten_tree_to_ident_hashes(raw_json['tree']):
+            page_id, page_version = split_ident_hash(page_ident_hash)
+            yield from scrape_version(page_id, page_version, host, visited_locs, book=(id, version,))
 
 
 def dump_in_bucket(items, bucket_info):
