@@ -18,6 +18,9 @@ size of paper (11.69 x 16.53 inches). However,  it's not the size of the paper
 that is important but rather the approach to solving the problem and
 conveying the right information to the people that need it.
 
+The A3 Planning portion is meant to be a living document and updated as the team
+gets more information.
+
 ### Background (PLAN)
 
 This spike is an experiment in itself to test the viability of using AWS Lambda
@@ -79,7 +82,7 @@ Then: return the proper json
 
 ### Follow up (ACT)
 
-
+Pending work to be completed.
 
 [cnx-archive]: https://github.com/openstax/cnx-archive
 [cnx-db]: https://github.com/openstax/cnx-db

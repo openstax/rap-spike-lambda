@@ -1,0 +1,10 @@
+{
+    "dev": {
+        "app_function": "wsgi.app",
+        "aws_region": "us-east-1",
+        "profile_name": "sandbox",
+        "project_name": "archive-gateway",
+        "runtime": "python3.7",
+        "s3_bucket": "zappa-archive-gateway"
+    }
+}
