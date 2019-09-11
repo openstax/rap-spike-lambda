@@ -15,7 +15,6 @@ For baked content
 For resources:
 
 - ``/resources/{sha1}``
-- ``/resources/{sha1}/media-type`` | ``/resources/{sha1}-media-type``
 
 
 Note, this is only intended to be used with a book, not individual pages.
@@ -36,6 +35,11 @@ VERBOSE = False
 T = Terminal()
 
 s3 = boto3.resource('s3')
+
+
+session = requests.Session()
+adapter = requests.adapters.HTTPAdapter(max_retries=5)
+session.mount('https://', adapter)
 
 
 def info(msg):
@@ -108,7 +112,7 @@ def scrape(book, host, visited_locs=VISITED_LOCS_MARKER):
 
     # Request the latest version
     url = f'{base_url}/{id}.json'
-    resp = requests.get(url)
+    resp = session.get(url)
     version = resp.json()['version']
 
     info(f'latest version of requested book: {T.bold}{id}@{version}{T.normal}')
@@ -116,7 +120,7 @@ def scrape(book, host, visited_locs=VISITED_LOCS_MARKER):
     # Get the latest version's contents and resources
     # With this we'll have access to the list of past versions
     for item in scrape_version(id, version, host, visited_locs):
-        data, type, id = item
+        data, media_type, type, id = item
         if type == 'raw-book-json':
             # TODO: Make note of the historical versions for later scraping
             historical = []
@@ -194,8 +198,8 @@ def scrape_version(id, version, host, visited_locs, book=None):
     temperature = 'raw'
     url = f'{base_raw_url}.json{raw_postfix}'
     debug(f'Requesting {temperature} JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
-    resp = requests.get(url)
-    yield io.BytesIO(resp.content), f'{temperature}-{type_}-json', ident_hash_seq
+    resp = session.get(url)
+    yield io.BytesIO(resp.content), 'application/json', f'{temperature}-{type_}-json', [ident_hash_seq[-1]]
 
     # Save the raw json for later
     raw_json = resp.json()
@@ -204,8 +208,8 @@ def scrape_version(id, version, host, visited_locs, book=None):
     temperature = 'baked'
     url = f'{base_baked_url}.json'
     debug(f'Requesting {temperature} JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
-    resp = requests.get(url)
-    yield io.BytesIO(resp.content), f'{temperature}-{type_}-json', ident_hash_seq
+    resp = session.get(url)
+    yield io.BytesIO(resp.content), 'application/json', f'{temperature}-{type_}-json', ident_hash_seq
 
     # Save the baked json for later
     baked_json = resp.json()
@@ -214,25 +218,23 @@ def scrape_version(id, version, host, visited_locs, book=None):
     temperature = 'raw'
     url = f'{base_raw_url}.html{raw_postfix}'
     debug(f'Requesting {temperature} HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
-    resp = requests.get(url)
-    yield io.BytesIO(resp.content), f'{temperature}-{type_}-html', ident_hash_seq
+    resp = session.get(url)
+    yield io.BytesIO(resp.content), 'text/html', f'{temperature}-{type_}-html', [ident_hash_seq[-1]]
 
     # Request the BAKED HTML
     temperature = 'baked'
     url = f'{base_baked_url}.html'
     debug(f'Requesting {temperature} HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
-    resp = requests.get(url)
-    yield io.BytesIO(resp.content), f'{temperature}-{type_}-html', ident_hash_seq
+    resp = session.get(url)
+    yield io.BytesIO(resp.content), 'text/html', f'{temperature}-{type_}-html', ident_hash_seq
 
     # Request the resources...
     for res_entity in raw_json['resources']:
         # Request the resource itself
         url = f'https://{host}/resources/{res_entity["id"]}'
         debug(f'Requesting {T.bold}resource{T.normal} at {T.yellow}{url}{T.normal}')
-        resp = requests.get(url)
-        yield io.BytesIO(resp.content), 'resource', res_entity['id']
-        # Note the resource media type
-        yield io.BytesIO(res_entity['media_type'].encode()), 'resource-media-type', res_entity['id']
+        resp = session.get(url)
+        yield io.BytesIO(resp.content), str(res_entity['media_type']), 'resource', res_entity['id']
 
     if is_book:
         # Request the individual raw pages
@@ -247,10 +249,10 @@ def dump_in_bucket(items, bucket_info):
     bucket = s3.Bucket(bucket_name)
 
     for item in items:
-        data, type, ident = item
+        data, media_type, type, ident = item
         key = gen_filepath(type, ident)
-        debug(f'Dumping {T.blue}{type}{T.normal} into the bucket at "{T.green_bold}{key}{T.normal}"')
-        bucket.upload_fileobj(data, key)
+        debug(f'Dumping {T.blue}{type}{T.normal} into the bucket at "{T.green_bold}{key}{T.normal}" ({media_type})')
+        bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
 
 
 @click.command()
