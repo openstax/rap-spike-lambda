@@ -41,18 +41,25 @@ For baked content
 For resources:
 
 - `/resources/{sha1}`
-- `/resources/{sha1}/media-type` | `/resources/{sha1}-media-type`
 
+## Semi-repeatable instructions
 
-## Stories
+### Create an S3 bucket
 
-### As REX, I want to obtain the baked HTML and metadata for content (book and/or page), so that I can render the REX site.
+Create an S3 bucket through the web console. Name it something like `ce-rap-{name}-web`. Be sure to enable public access on the bucket. Also set the tags to something similar to those in: https://openstax.slack.com/files/U0F988KSQ/FN89FMUGN/screen_shot_2019-09-09_at_12.51.39.png
 
-### As a developer, I want to view the raw HTML of a book, so that I am able to drill down through the links of a book.
+Make sure you select the us-east-2 region.
 
-### As a developer, I want to view the raw HTML of a page, so that I can view the read the HTML.
+### Create a CloudFront distribution
 
-### As a developer, I want to view the baked book's HTML, so that I am able to drill down through the links of the book.
+1. Services -> (search) 'cloudfront' -> (click) CloudFront
+1. (click) Create Distribution -> under 'Web' click Get Started
+1. Fill in the 'Origin Domain Name' value, which is your S3 bucket (i.e. `ce-rap-{name}-web.s3.amazonaws.com`) -> scroll to the bottom and click 'Create Distribution' button
 
-### As a developer, I want to view the baked book's HTML pages, so that I am able to read the HTML.
+### Creating a Lambda function
 
+TODO
+
+### Hooking up the Lambda functions to CloudFront
+
+TODO
