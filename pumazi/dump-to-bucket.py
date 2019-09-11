@@ -54,31 +54,32 @@ def gen_filepath(type_, ident):
     For a resource the ``ident`` is the SHA1.
 
     """
-    def content_path(path_tmplt, ident):
-        x = []
-        for ident_hash in ident:
-            x.append(join_ident_hash(*ident_hash))
-        return path_tmplt.format(*x)
+    if not type_.startswith('resource'):
+        ids = [join_ident_hash(*i) for i in ident]
+    else:
+        ids = ident
 
     func = {
-        'raw-book-json': lambda i: content_path('raw/{0}.json', i),
-        'raw-book-html': lambda i: content_path('raw/{0}.html', i),
-        'raw-page-json': lambda i: content_path('raw/{0}.json', i),
-        'raw-page-html': lambda i: content_path('raw/{0}.html', i),
-        'baked-book-json': lambda i: content_path('baked/{0}.json', i),
-        'baked-book-html': lambda i: content_path('baked/{0}.html', i),
-        'baked-page-json': lambda i: content_path('baked/{0}:{1}.json', i),
-        'baked-page-html': lambda i: content_path('baked/{0}:{1}.html', i),
+        'raw-book-json': lambda i: f'raw/{i[-1]}.json',
+        'raw-book-html': lambda i: f'raw/{i[-1]}.html',
+        'raw-page-json': lambda i: f'raw/{i[-1]}.json',
+        'raw-page-html': lambda i: f'raw/{i[-1]}.html',
+        'baked-book-json': lambda i: f'baked/{i[0]}.json',
+        'baked-book-html': lambda i: f'baked/{i[0]}.html',
+        'baked-page-json': lambda i: f'baked/{i[0]}:{i[1]}.json',
+        'baked-page-html': lambda i: f'baked/{i[0]}:{i[1]}.html',
         'resource': lambda i: f'resources/{i}',
         'resource-media-type': lambda i: f'resources/{i}-media-type',
     }[type_]
-    return func(ident)
+    return func(ids)
 
 # Some sanity tests...
 assert gen_filepath('raw-book-json', [('abc123', '1.1')]) == 'raw/abc123@1.1.json'
 assert gen_filepath('raw-book-html', [('abc123', '1.1')]) == 'raw/abc123@1.1.html'
 assert gen_filepath('raw-page-json', [('abc123', '1.1')]) == 'raw/abc123@1.1.json'
 assert gen_filepath('raw-page-html', [('abc123', '1.1')]) == 'raw/abc123@1.1.html'
+assert gen_filepath('raw-page-json', [('abc123', '1.1'), ('def456', '9')]) == 'raw/def456@9.json'
+assert gen_filepath('raw-page-html', [('abc123', '1.1'), ('def456', '9')]) == 'raw/def456@9.html'
 assert gen_filepath('baked-book-json', [('abc123', '1.1')]) == 'baked/abc123@1.1.json'
 assert gen_filepath('baked-book-html', [('abc123', '1.1')]) == 'baked/abc123@1.1.html'
 assert gen_filepath('baked-page-json', [('abc123', '1.1'), ('def456', None)]) == 'baked/abc123@1.1:def456.json'
