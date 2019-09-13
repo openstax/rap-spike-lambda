@@ -1,0 +1,5 @@
+blessings
+boto3
+cnx-common
+click
+requests
