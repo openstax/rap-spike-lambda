@@ -50,6 +50,8 @@ def debug(msg):
     if VERBOSE: print(msg, file=sys.stderr)
 
 
+
+
 def gen_filepath(type_, ident):
     """Given a content type and an ids structure
     produce the S3 filepath to the object.
@@ -64,32 +66,32 @@ def gen_filepath(type_, ident):
         ids = ident
 
     func = {
-        'raw-book-json': lambda i: f'raw/{i[-1]}.json',
-        'raw-book-html': lambda i: f'raw/{i[-1]}.html',
-        'raw-page-json': lambda i: f'raw/{i[-1]}.json',
-        'raw-page-html': lambda i: f'raw/{i[-1]}.html',
-        'baked-book-json': lambda i: f'baked/{i[0]}.json',
-        'baked-book-html': lambda i: f'baked/{i[0]}.html',
-        'baked-page-json': lambda i: f'baked/{i[0]}:{i[1]}.json',
-        'baked-page-html': lambda i: f'baked/{i[0]}:{i[1]}.html',
-        'resource': lambda i: f'resources/{i}',
-        'resource-media-type': lambda i: f'resources/{i}-media-type',
+        'raw-book-json': lambda i: f'{i[-1]}.json',
+        'raw-book-html': lambda i: f'{i[-1]}.html',
+        'raw-page-json': lambda i: f'{i[-1]}.json',
+        'raw-page-html': lambda i: f'{i[-1]}.html',
+        'baked-book-json': lambda i: f'{i[0]}.json',
+        'baked-book-html': lambda i: f'{i[0]}.html',
+        'baked-page-json': lambda i: f'{i[0]}:{i[1]}.json',
+        'baked-page-html': lambda i: f'{i[0]}:{i[1]}.html',
+        'resource': lambda i: f'{i}',
+        'resource-media-type': lambda i: f'{i}-media-type',
     }[type_]
     return func(ids)
 
 # Some sanity tests...
-assert gen_filepath('raw-book-json', [('abc123', '1.1')]) == 'raw/abc123@1.1.json'
-assert gen_filepath('raw-book-html', [('abc123', '1.1')]) == 'raw/abc123@1.1.html'
-assert gen_filepath('raw-page-json', [('abc123', '1.1')]) == 'raw/abc123@1.1.json'
-assert gen_filepath('raw-page-html', [('abc123', '1.1')]) == 'raw/abc123@1.1.html'
-assert gen_filepath('raw-page-json', [('abc123', '1.1'), ('def456', '9')]) == 'raw/def456@9.json'
-assert gen_filepath('raw-page-html', [('abc123', '1.1'), ('def456', '9')]) == 'raw/def456@9.html'
-assert gen_filepath('baked-book-json', [('abc123', '1.1')]) == 'baked/abc123@1.1.json'
-assert gen_filepath('baked-book-html', [('abc123', '1.1')]) == 'baked/abc123@1.1.html'
-assert gen_filepath('baked-page-json', [('abc123', '1.1'), ('def456', None)]) == 'baked/abc123@1.1:def456.json'
-assert gen_filepath('baked-page-html', [('abc123', '1.1'), ('def456', None)]) == 'baked/abc123@1.1:def456.html'
-assert gen_filepath('resource', 'deadbeef') == 'resources/deadbeef'
-assert gen_filepath('resource-media-type', 'deadbeef') == 'resources/deadbeef-media-type'
+assert gen_filepath('raw-book-json', [('abc123', '1.1')]) == 'abc123@1.1.json'
+assert gen_filepath('raw-book-html', [('abc123', '1.1')]) == 'abc123@1.1.html'
+assert gen_filepath('raw-page-json', [('abc123', '1.1')]) == 'abc123@1.1.json'
+assert gen_filepath('raw-page-html', [('abc123', '1.1')]) == 'abc123@1.1.html'
+assert gen_filepath('raw-page-json', [('abc123', '1.1'), ('def456', '9')]) == 'def456@9.json'
+assert gen_filepath('raw-page-html', [('abc123', '1.1'), ('def456', '9')]) == 'def456@9.html'
+assert gen_filepath('baked-book-json', [('abc123', '1.1')]) == 'abc123@1.1.json'
+assert gen_filepath('baked-book-html', [('abc123', '1.1')]) == 'abc123@1.1.html'
+assert gen_filepath('baked-page-json', [('abc123', '1.1'), ('def456', None)]) == 'abc123@1.1:def456.json'
+assert gen_filepath('baked-page-html', [('abc123', '1.1'), ('def456', None)]) == 'abc123@1.1:def456.html'
+assert gen_filepath('resource', 'deadbeef') == 'deadbeef'
+assert gen_filepath('resource-media-type', 'deadbeef') == 'deadbeef-media-type'
 
 
 VISITED_LOCS_MARKER = object()
@@ -247,25 +249,35 @@ def scrape_version(id, version, host, visited_locs, book=None):
             yield from scrape_version(page_id, page_version, host, visited_locs, book=(id, version,))
 
 
-def dump_in_bucket(items, bucket_info):
-    bucket_name, region_name = bucket_info
-    s3 = boto3.resource('s3', region_name=region_name)
-    bucket = s3.Bucket(bucket_name)
+def dump_in_bucket(items, raw_bucket_name, baked_bucket_name, resources_bucket_name, region):
+    s3 = boto3.resource('s3', region_name=region)
+    raw_bucket = s3.Bucket(raw_bucket_name)
+    baked_bucket = s3.Bucket(baked_bucket_name)
+    resources_bucket = s3.Bucket(resources_bucket_name)
 
     for item in items:
         data, media_type, type, ident = item
         key = gen_filepath(type, ident)
-        debug(f'Dumping {T.blue}{type}{T.normal} into the bucket at "{T.green_bold}{key}{T.normal}" ({media_type})')
-        bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
+        if type.startswith('baked'):
+            debug(f'Dumping {T.blue}{type}{T.normal} into bucket "{baked_bucket_name}" at "{T.green_bold}{key}{T.normal}" ({media_type})')
+            baked_bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
+        elif type.startswith('resource'):
+            debug(f'Dumping {T.blue}{type}{T.normal} into bucket "{resources_bucket_name}" at "{T.green_bold}{key}{T.normal}" ({media_type})')
+            resources_bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
+        else:
+            debug(f'Dumping {T.blue}{type}{T.normal} into bucket "{raw_bucket_name}" at "{T.green_bold}{key}{T.normal}" ({media_type})')
+            raw_bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
 
 
 @click.command()
 @click.option('-v', '--verbose', is_flag=True, help='Enables verbose mode')
 @click.option('-b', '--book', multiple=True)
 @click.option('-h', '--host', default='archive.cnx.org', help='archive hostname')
-@click.argument('bucket')
+@click.argument('raw_bucket')
+@click.argument('baked_bucket')
+@click.argument('resources_bucket')
 @click.argument('region', default='us-west-2')
-def main(verbose, book, host, bucket, region):
+def main(verbose, book, host, raw_bucket, baked_bucket, resources_bucket, region):
     global VERBOSE
     VERBOSE = verbose
     books = book
@@ -274,9 +286,15 @@ def main(verbose, book, host, bucket, region):
             "At least one book must be supplied\n"
             "See the --book option"
         )
+    if (raw_bucket.lower() == baked_bucket.lower() or
+        baked_bucket.lower() == resources_bucket.lower() or
+        raw_bucket.lower() == resources_bucket.lower()):
+        raise click.UsageError(
+            "All destination buckets (raw, baked, resources) needs to be different from eachother"
+        )
 
     for book in books:
-        dump_in_bucket(scrape(book, host), (bucket, region))
+        dump_in_bucket(scrape(book, host), raw_bucket, baked_bucket, resources_bucket, region)
 
 
 if __name__ == '__main__':
