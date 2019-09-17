@@ -9,6 +9,11 @@
   * [Epics and Task Cards](#epics-stories-and-task-cards-do)
   * [Confirmation](#confirmation-check)
   * [Follow up](#follow-up-act)
+* [Using Cloudformation](#using-cloudformation)
+  * [Articles that are useful](#articles-that-are-useful)
+  * [Create the distribution, buckets, and policies](#create-the-distribution-buckets-and-policies)
+  * [Customizing for developer use](#customizing-for-developer-use)
+* [Loading the books into S3](#loading-the-books-into-s3)
 
 ## A3 Planning
 
@@ -79,9 +84,38 @@ Then: return the proper json
 
 ### Follow up (ACT)
 
+## Using Cloudformation
 
+### Articles that are useful
+
+- [AWS CloudFormation Documentation][aws-cloudformation]
+- [Managing Lambda@Edge and CloudFront deployments by using a CI/CD pipeline][aws-cf-lambda-ci]
+- [Amazon S3 + Amazon CloudFront: A Match Made in the Cloud][aws-cf-s3]
+- [Chalice CloudFormation Support][aws-chalice-support]
+- [Chalice Pure Lambda Functions][aws-chalice-pure-lambda]
+- [AWS Serverless Application Model][aws-sam]
+
+### Create the distribution, buckets, and policies
+
+To create the distribution run the following using the `aws` cli:
+
+    aws cloudformation deploy --template-file cf-templates/cf-cloudfront-content-buckets.yaml --region us-east-1 --stack-name ce-distribution --tags Project=rap-spike-lambda Application=rap-spike-lambda Environment=dev Owner=Mike
+
+### Customizing for developer use
+
+Each developer could create a copy of the template file to create their own cloudfront distribution and buckets.
+
+## Loading the books into s3
+
+Follow the instructions in [./dump/README.md](./dump/README.md) file.
 
 [cnx-archive]: https://github.com/openstax/cnx-archive
 [cnx-db]: https://github.com/openstax/cnx-db
 [rap-spike-concourse]: https://github.com/openstax/rap-spike-concourse
 [rap-two-pager]: https://docs.google.com/document/d/1GW5VGrjKmIRw3nbFTIkBZgE0mlHD9ky2TJ_bSUIcJ_w/edit#heading=h.6u0c02buvzha
+[aws-cloudformation]: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html
+[aws-chalice-support]: https://chalice.readthedocs.io/en/latest/topics/cfn.html
+[aws-chalice-pure-lambda]: https://chalice.readthedocs.io/en/latest/topics/purelambda.html
+[aws-sam]: https://aws.amazon.com/serverless/sam/
+[aws-cf-lambda-ci]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-options.html
+[aws-cf-s3]: https://aws.amazon.com/blogs/networking-and-content-delivery/amazon-s3-amazon-cloudfront-a-match-made-in-the-cloud/
