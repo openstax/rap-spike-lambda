@@ -2,7 +2,17 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: '(Cloudfront-as-default-00) Simple CloudFront distribution with an S3 origin'
 
 Resources:
-  S3Bucket1:
+
+  S3Artifacts:
+    DeletionPolicy: 'Delete'
+    Metadata:
+      Comment: 'Bucket to store code artifacts'
+    Properties:
+      AccessControl: 'Private'
+      BucketName: !Sub 'ce-artifacts-${AWS::StackName}-${AWS::AccountId}'
+    Type: 'AWS::S3::Bucket'
+
+  S3Raw:
     DeletionPolicy: 'Delete'
     Metadata:
       Comment: 'Bucket to store raw content data'
@@ -11,7 +21,7 @@ Resources:
       BucketName: !Sub 'ce-raw-${AWS::StackName}-${AWS::AccountId}'
     Type: 'AWS::S3::Bucket'
 
-  S3Bucket2:
+  S3Baked:
     DeletionPolicy: 'Delete'
     Metadata:
       Comment: 'Bucket to store baked content data'
@@ -20,7 +30,7 @@ Resources:
       BucketName: !Sub 'ce-baked-${AWS::StackName}-${AWS::AccountId}'
     Type: 'AWS::S3::Bucket'
 
-  S3Bucket3:
+  S3Resources:
     DeletionPolicy: 'Delete'
     Metadata:
       Comment: 'Bucket to store resources referenced by content'
@@ -29,11 +39,11 @@ Resources:
       BucketName: !Sub 'ce-resources-${AWS::StackName}-${AWS::AccountId}'
     Type: 'AWS::S3::Bucket'
 
-  S3BucketPolicy1:
+  S3RawPolicy:
     Metadata:
       Comment: 'Bucket policy to allow cloudfront to access the data'
     Properties:
-      Bucket: !Ref S3Bucket1
+      Bucket: !Ref S3Raw
       PolicyDocument:
         Statement:
           - Action:
@@ -42,14 +52,14 @@ Resources:
             Principal:
               CanonicalUser: !GetAtt CfOriginAccessIdentity.S3CanonicalUserId
             Resource:
-              - !Sub 'arn:aws:s3:::${S3Bucket1}/*'
+              - !Sub 'arn:aws:s3:::${S3Raw}/*'
     Type: 'AWS::S3::BucketPolicy'
 
-  S3BucketPolicy2:
+  S3BakedPolicy:
     Metadata:
       Comment: 'Bucket policy to allow cloudfront to access the data'
     Properties:
-      Bucket: !Ref S3Bucket2
+      Bucket: !Ref S3Baked
       PolicyDocument:
         Statement:
           - Action:
@@ -58,14 +68,14 @@ Resources:
             Principal:
               CanonicalUser: !GetAtt CfOriginAccessIdentity.S3CanonicalUserId
             Resource:
-              - !Sub 'arn:aws:s3:::${S3Bucket2}/*'
+              - !Sub 'arn:aws:s3:::${S3Baked}/*'
     Type: 'AWS::S3::BucketPolicy'
 
-  S3BucketPolicy3:
+  S3ResourcesPolicy:
     Metadata:
       Comment: 'Bucket policy to allow cloudfront to access the data'
     Properties:
-      Bucket: !Ref S3Bucket3
+      Bucket: !Ref S3Resources
       PolicyDocument:
         Statement:
           - Action:
@@ -74,7 +84,7 @@ Resources:
             Principal:
               CanonicalUser: !GetAtt CfOriginAccessIdentity.S3CanonicalUserId
             Resource:
-              - !Sub 'arn:aws:s3:::${S3Bucket3}/*'
+              - !Sub 'arn:aws:s3:::${S3Resources}/*'
     Type: 'AWS::S3::BucketPolicy'
 
   CfDistribution:
@@ -100,15 +110,15 @@ Resources:
             QueryString: false
           MaxTTL: 31536000
           MinTTL: 86400
-          TargetOriginId: !Sub 's3-origin-${S3Bucket2}'
+          TargetOriginId: !Sub 's3-origin-${S3Baked}'
           ViewerProtocolPolicy: 'redirect-to-https'
         DefaultRootObject: 'index.html'
         Enabled: true
         HttpVersion: 'http1.1'
         IPV6Enabled: false
         Origins:
-          - DomainName: !GetAtt S3Bucket2.DomainName
-            Id: !Sub 's3-origin-${S3Bucket2}'
+          - DomainName: !GetAtt S3Baked.DomainName
+            Id: !Sub 's3-origin-${S3Baked}'
             OriginPath: ''
             S3OriginConfig:
               OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CfOriginAccessIdentity}'
@@ -124,18 +134,22 @@ Resources:
     Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
 
 Outputs:
-  S3BucketName1:
-    Description: 'Bucket name'
-    Value: !Ref S3Bucket1
-  S3BucketName2:
-    Description: 'Bucket name'
-    Value: !Ref S3Bucket2
-  S3BucketName3:
-    Description: 'Bucket name'
-    Value: !Ref S3Bucket3
+  S3Artifacts:
+    Description: 'CE Artifacts S3 Bucket'
+    Value: !Ref S3Artifacts
+  S3Raw:
+    Description: 'CE Raw S3 Bucket'
+    Value: !Ref S3Raw
+  S3Baked:
+    Description: 'CE Baked S3 Bucket'
+    Value: !Ref S3Baked
+  S3Resources:
+    Description: 'CE Resources S3 Bucket'
+    Value: !Ref S3Resources
   CfDistributionId:
     Description: 'Id for our cloudfront distribution'
     Value: !Ref CfDistribution
   CfDistributionDomainName:
     Description: 'Domain name for our cloudfront distribution'
     Value: !GetAtt CfDistribution.DomainName
+
