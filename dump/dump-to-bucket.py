@@ -176,7 +176,8 @@ test_tree_idents = [
 assert list(flatten_tree_to_ident_hashes(test_tree)) == test_tree_idents
 
 
-def scrape_version(id, version, host, visited_locs, book=None):
+def scrape_version(id, version, host, visited_locs, book=None,
+                   is_composite_page=False):
     """
     """
     if book is None:
@@ -196,16 +197,25 @@ def scrape_version(id, version, host, visited_locs, book=None):
     base_baked_url = f'{base_url}/{ident_hash}'
     raw_postfix = '?as_collated=0'
 
-    # Request the RAW JSON
-    temperature = 'raw'
-    format_ = 'json'
-    url = f'{base_raw_url}.{format_}{raw_postfix}'
-    debug(f'Requesting {temperature} JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
-    resp = session.get(url)
-    yield io.BytesIO(resp.content), 'application/json', f'{temperature}-{type_}-json', [ident_hash_seq[-1]]
+    if not is_composite_page:
+        # Request the RAW JSON
+        temperature = 'raw'
+        format_ = 'json'
+        url = f'{base_raw_url}.{format_}{raw_postfix}'
+        debug(f'Requesting {temperature} JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+        resp = session.get(url)
+        yield io.BytesIO(resp.content), 'application/json', f'{temperature}-{type_}-json', [ident_hash_seq[-1]]
 
-    # Save the raw json for later
-    raw_json = resp.json()
+        # Save the raw json for later
+        raw_json = resp.json()
+
+        # Request the RAW HTML
+        temperature = 'raw'
+        format_ = 'html'
+        url = f'{base_raw_url}.{format_}{raw_postfix}'
+        debug(f'Requesting {temperature} HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+        resp = session.get(url)
+        yield io.BytesIO(resp.content), 'text/html', f'{temperature}-{type_}-html', [ident_hash_seq[-1]]
 
     # Request the BAKED JSON
     temperature = 'baked'
@@ -218,14 +228,6 @@ def scrape_version(id, version, host, visited_locs, book=None):
     # Save the baked json for later
     baked_json = resp.json()
 
-    # Request the RAW HTML
-    temperature = 'raw'
-    format_ = 'html'
-    url = f'{base_raw_url}.{format_}{raw_postfix}'
-    debug(f'Requesting {temperature} HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
-    resp = session.get(url)
-    yield io.BytesIO(resp.content), 'text/html', f'{temperature}-{type_}-html', [ident_hash_seq[-1]]
-
     # Request the BAKED HTML
     temperature = 'baked'
     format_ = 'html'
@@ -235,7 +237,7 @@ def scrape_version(id, version, host, visited_locs, book=None):
     yield io.BytesIO(resp.content), 'text/html', f'{temperature}-{type_}-html', ident_hash_seq
 
     # Request the resources...
-    for res_entity in raw_json['resources']:
+    for res_entity in baked_json['resources']:
         # Request the resource itself
         url = f'https://{host}/resources/{res_entity["id"]}'
         debug(f'Requesting {T.bold}resource{T.normal} at {T.yellow}{url}{T.normal}')
@@ -244,9 +246,11 @@ def scrape_version(id, version, host, visited_locs, book=None):
 
     if is_book:
         # Request the individual raw pages
-        for page_ident_hash in flatten_tree_to_ident_hashes(raw_json['tree']):
+        raw_pages = flatten_tree_to_ident_hashes(raw_json['tree'])
+        for page_ident_hash in flatten_tree_to_ident_hashes(baked_json['tree']):
             page_id, page_version = split_ident_hash(page_ident_hash)
-            yield from scrape_version(page_id, page_version, host, visited_locs, book=(id, version,))
+            yield from scrape_version(page_id, page_version, host, visited_locs, book=(id, version,),
+                                      is_composite_page=(page_ident_hash not in raw_pages))
 
 
 def dump_in_bucket(items, raw_bucket_name, baked_bucket_name, resources_bucket_name, region):
