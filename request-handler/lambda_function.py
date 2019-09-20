@@ -1,11 +1,10 @@
-import os
 import re
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 
-BAKED_BUCKET = os.environ["S3_BAKED_BUCKET"]
-RAW_BUCKET = os.environ["S3_RAW_BUCKET"]
-RESOURCES_BUCKET = os.environ["S3_RESOURCES_BUCKET"]
+BAKED_BUCKET = "ce-baked-rap-distribution-373045849756"
+RAW_BUCKET = "ce-raw-rap-distribution-373045849756"
+RESOURCES_BUCKET = "ce-resources-rap-distribution-373045849756"
 
 
 def get_listing(prefix, suffix, bucket=None):
