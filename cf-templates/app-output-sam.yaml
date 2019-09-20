@@ -106,6 +106,14 @@ Resources:
   LambdaEdgeFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Environment:
+        Variables:
+          S3_RAW_BUCKET:
+            Ref: RawBucket
+          S3_BAKED_BUCKET:
+            Ref: BakedBucket
+          S3_RESOURCES_BUCKET:
+            Ref: ResourcesBucket
       CodeUri: s3://ce-artifacts-rap-distribution-373045849756/e98c68e886cf7b6bbca87d338b2b81d9
       Role:
         Fn::GetAtt:
@@ -121,7 +129,7 @@ Resources:
       Path: /
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      - arn:aws:iam::aws:policy/service-role/AmazonS3ReadOnlyAccess
+      - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
