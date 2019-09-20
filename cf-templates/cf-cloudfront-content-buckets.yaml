@@ -100,11 +100,6 @@ Resources:
   LambdaEdgeFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Environment:
-        Variables:
-          S3_RAW_BUCKET: !Ref RawBucket
-          S3_BAKED_BUCKET: !Ref BakedBucket
-          S3_RESOURCES_BUCKET: !Ref ResourcesBucket
       CodeUri: ../request-handler
       Role: !GetAtt LambdaEdgeFunctionRole.Arn
       Runtime: python3.7
