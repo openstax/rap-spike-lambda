@@ -11,8 +11,8 @@
   * [Follow up](#follow-up-act)
 * [Using Cloudformation](#using-cloudformation)
   * [Articles that are useful](#articles-that-are-useful)
-  * [Create the distribution, buckets, and policies](#create-the-distribution-buckets-and-policies)
-  * [Customizing for developer use](#customizing-for-developer-use)
+  * [Create the rap-distribution stack](#create-the-rap-distribution-stack-in-aws)
+  * [Update the stack after changes](#update-the-rap-distribution-after-changes)
 * [Loading the books into S3](#loading-the-books-into-s3)
 
 ## A3 Planning
@@ -95,15 +95,45 @@ Then: return the proper json
 - [Chalice Pure Lambda Functions][aws-chalice-pure-lambda]
 - [AWS Serverless Application Model][aws-sam]
 
-### Create the distribution, buckets, and policies
+### Create the rap-distribution stack in AWS
 
-To create the distribution run the following using the `aws` cli:
 
-    aws cloudformation deploy --template-file cf-templates/cf-cloudfront-content-buckets.yaml --region us-east-1 --stack-name ce-distribution --tags Project=rap-spike-lambda Application=rap-spike-lambda Environment=dev Owner=Mike
+To create the stack run the following using the `aws` cli:
 
-### Customizing for developer use
+    aws cloudformation deploy --template-file cf-templates/cf-cloudfront-content-buckets.yaml --region us-east-1 --stack-name rap-distribution --tags Project=rap-spike-lambda Application=rap-spike-lambda Environment=dev Owner=Mike
 
-Each developer could create a copy of the template file to create their own cloudfront distribution and buckets.
+Note: This step only needs to be run the first time to create the stack. If you need to make updates please follow the
+instructions in [Update the rap-distribution after changes](#update-the-rap-distribution-after-changes).
+
+Note: This command will take about 15-25min to complete. It will create the following resources in AWS:
+
+- Cloudfront distribution
+- [Lambda Function](./request-handler/lambda_function.py)
+- Artifact S3 Bucket
+- Raw JSON S3 Bucket
+- Baked HTML S3 Bucket
+- Resources S3 Bucket
+
+### Update the rap-distribution after changes
+
+The `aws cloudformation` command can package up the changes and upload to an s3 bucket.
+It allows you to do this by using the `package` argument along with `--s3-bucket` and `--output-template-file` options.
+
+This will package up the lambda function, upload to the s3 bucket, and generate a new template that has
+the s3 bucket substituted in the proper locations of the template.
+
+To update the rap-distribution stack after a merge run the following: 
+
+    aws cloudformation package --template-file ./cf-templates/cf-cloudfront-content-buckets.yaml \
+    --s3-bucket ce-artifacts-rap-distribution-373045849756 --output-template-file ./cf-templates/app-output-sam.yaml
+
+This will output a SAM compiled version of the template that can be used to update the stack.
+
+Run the following command after the one above to update the stack:
+
+    aws cloudformation update-stack --stack-name rap-distribution \
+    --region us-east-1 --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM \
+    --template-body file://./cf-templates/app-output-sam.yaml
 
 ## Loading the books into s3
 

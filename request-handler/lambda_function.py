@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 
 
-def get_listing(prefix, suffix, bucket='ce-baked-ce-distribution-373045849756'):
+def get_listing(prefix, suffix, bucket='ce-baked-rap-distribution-373045849756'):
     url = f'https://{bucket}.s3.amazonaws.com/?list-type=2&prefix={prefix}'
     ns = 'http://s3.amazonaws.com/doc/2006-03-01/'
     root = ET.fromstring(urlopen(url).read())

@@ -1,8 +1,28 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: '(Cloudfront-as-default-00) Simple CloudFront distribution with an S3 origin'
+Transform: AWS::Serverless-2016-10-31
+Description: 'RAP SPIKE Distribution'
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - staging
+      - production
+    Default: staging
+    Description: Environment that can be added to resource names
 
 Resources:
-  S3Bucket1:
+
+  ArtifactsBucket:
+    DeletionPolicy: 'Delete'
+    Metadata:
+      Comment: 'Bucket to store code artifacts'
+    Properties:
+      AccessControl: 'Private'
+      BucketName: !Sub 'ce-artifacts-${AWS::StackName}-${AWS::AccountId}'
+    Type: 'AWS::S3::Bucket'
+
+  RawBucket:
     DeletionPolicy: 'Delete'
     Metadata:
       Comment: 'Bucket to store raw content data'
@@ -11,7 +31,7 @@ Resources:
       BucketName: !Sub 'ce-raw-${AWS::StackName}-${AWS::AccountId}'
     Type: 'AWS::S3::Bucket'
 
-  S3Bucket2:
+  BakedBucket:
     DeletionPolicy: 'Delete'
     Metadata:
       Comment: 'Bucket to store baked content data'
@@ -20,7 +40,7 @@ Resources:
       BucketName: !Sub 'ce-baked-${AWS::StackName}-${AWS::AccountId}'
     Type: 'AWS::S3::Bucket'
 
-  S3Bucket3:
+  ResourcesBucket:
     DeletionPolicy: 'Delete'
     Metadata:
       Comment: 'Bucket to store resources referenced by content'
@@ -29,11 +49,11 @@ Resources:
       BucketName: !Sub 'ce-resources-${AWS::StackName}-${AWS::AccountId}'
     Type: 'AWS::S3::Bucket'
 
-  S3BucketPolicy1:
+  RawBucketPolicy:
     Metadata:
       Comment: 'Bucket policy to allow cloudfront to access the data'
     Properties:
-      Bucket: !Ref S3Bucket1
+      Bucket: !Ref RawBucket
       PolicyDocument:
         Statement:
           - Action:
@@ -42,14 +62,14 @@ Resources:
             Principal:
               CanonicalUser: !GetAtt CfOriginAccessIdentity.S3CanonicalUserId
             Resource:
-              - !Sub 'arn:aws:s3:::${S3Bucket1}/*'
+              - !Sub 'arn:aws:s3:::${RawBucket}/*'
     Type: 'AWS::S3::BucketPolicy'
 
-  S3BucketPolicy2:
+  BakedBucketPolicy:
     Metadata:
       Comment: 'Bucket policy to allow cloudfront to access the data'
     Properties:
-      Bucket: !Ref S3Bucket2
+      Bucket: !Ref BakedBucket
       PolicyDocument:
         Statement:
           - Action:
@@ -58,14 +78,14 @@ Resources:
             Principal:
               CanonicalUser: !GetAtt CfOriginAccessIdentity.S3CanonicalUserId
             Resource:
-              - !Sub 'arn:aws:s3:::${S3Bucket2}/*'
+              - !Sub 'arn:aws:s3:::${BakedBucket}/*'
     Type: 'AWS::S3::BucketPolicy'
 
-  S3BucketPolicy3:
+  ResourcesBucketPolicy:
     Metadata:
       Comment: 'Bucket policy to allow cloudfront to access the data'
     Properties:
-      Bucket: !Ref S3Bucket3
+      Bucket: !Ref ResourcesBucket
       PolicyDocument:
         Statement:
           - Action:
@@ -74,16 +94,46 @@ Resources:
             Principal:
               CanonicalUser: !GetAtt CfOriginAccessIdentity.S3CanonicalUserId
             Resource:
-              - !Sub 'arn:aws:s3:::${S3Bucket3}/*'
+              - !Sub 'arn:aws:s3:::${ResourcesBucket}/*'
     Type: 'AWS::S3::BucketPolicy'
+
+  LambdaEdgeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../request-handler
+      Role: !GetAtt LambdaEdgeFunctionRole.Arn
+      Runtime: python3.7
+      Handler: lambda_function.lambda_handler
+      Timeout: 5
+      AutoPublishAlias: live
+
+  LambdaEdgeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        - "arn:aws:iam::aws:policy/service-role/AmazonS3ReadOnlyAccess"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "AllowLambdaServiceToAssumeRole"
+            Effect: "Allow"
+            Action:
+              - "sts:AssumeRole"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+                - "edgelambda.amazonaws.com"
 
   CfDistribution:
-    Metadata:
-      Comment: 'A simple CloudFront distribution with an S3 origin'
     Properties:
       DistributionConfig:
-        Comment: 'A simple distribution with an S3 origin'
+        Comment: !Sub '${Environment} - Distribution for RAP Spike'
         DefaultCacheBehavior:
+          LambdaFunctionAssociations:
+            - EventType: origin-request
+              LambdaFunctionARN: !Ref LambdaEdgeFunction.Version
           AllowedMethods:
             - 'HEAD'
             - 'GET'
@@ -100,18 +150,17 @@ Resources:
             QueryString: false
           MaxTTL: 31536000
           MinTTL: 86400
-          TargetOriginId: !Sub 's3-origin-${S3Bucket2}'
+          TargetOriginId: MainOrigin
           ViewerProtocolPolicy: 'redirect-to-https'
         DefaultRootObject: 'index.html'
         Enabled: true
         HttpVersion: 'http1.1'
         IPV6Enabled: false
         Origins:
-          - DomainName: !GetAtt S3Bucket2.DomainName
-            Id: !Sub 's3-origin-${S3Bucket2}'
-            OriginPath: ''
-            S3OriginConfig:
-              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CfOriginAccessIdentity}'
+          - DomainName: aws.amazon.com
+            Id: MainOrigin
+            CustomOriginConfig:
+              OriginProtocolPolicy: match-viewer
         PriceClass: 'PriceClass_All'
     Type: 'AWS::CloudFront::Distribution'
 
@@ -124,18 +173,25 @@ Resources:
     Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
 
 Outputs:
-  S3BucketName1:
-    Description: 'Bucket name'
-    Value: !Ref S3Bucket1
-  S3BucketName2:
-    Description: 'Bucket name'
-    Value: !Ref S3Bucket2
-  S3BucketName3:
-    Description: 'Bucket name'
-    Value: !Ref S3Bucket3
+  ArtifactsBucket:
+    Description: 'CE Artifacts S3 Bucket'
+    Value: !Ref ArtifactsBucket
+  RawBucket:
+    Description: 'CE Raw S3 Bucket'
+    Value: !Ref RawBucket
+  BakedBucket:
+    Description: 'CE Baked S3 Bucket'
+    Value: !Ref BakedBucket
+  ResourcesBucket:
+    Description: 'CE Resources S3 Bucket'
+    Value: !Ref ResourcesBucket
+  LambdaEdgeFunction:
+    Description: Lambda@Edge handler for content
+    Value: !Ref LambdaEdgeFunction.Version
   CfDistributionId:
     Description: 'Id for our cloudfront distribution'
     Value: !Ref CfDistribution
   CfDistributionDomainName:
     Description: 'Domain name for our cloudfront distribution'
     Value: !GetAtt CfDistribution.DomainName
+
