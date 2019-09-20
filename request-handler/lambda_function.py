@@ -1,12 +1,14 @@
-# Added by mike; written by karen
-# View latest lambda function here: https://console.aws.amazon.com/lambda/home?region=us-east-1#/functions/ce-rap-karen-request-handler/versions/$LATEST?tab=graph
-
+import os
 import re
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 
+BAKED_BUCKET = os.environ["S3_BAKED_BUCKET"]
+RAW_BUCKET = os.environ["S3_RAW_BUCKET"]
+RESOURCES_BUCKET = os.environ["S3_RESOURCES_BUCKET"]
 
-def get_listing(prefix, suffix, bucket='ce-baked-rap-distribution-373045849756'):
+
+def get_listing(prefix, suffix, bucket=None):
     url = f'https://{bucket}.s3.amazonaws.com/?list-type=2&prefix={prefix}'
     ns = 'http://s3.amazonaws.com/doc/2006-03-01/'
     root = ET.fromstring(urlopen(url).read())
@@ -56,7 +58,8 @@ def lambda_handler(event, context):
         if baked and ':' in uri:
             book, page = path.split(':', 1)
             if '@' not in book:
-                listing = [a for a in get_listing(book, f'.{format_}') if page in a]
+                listing = [a for a in get_listing(book, f'.{format_}', bucket=BAKED_BUCKET) if
+                           page in a]
         if listing is None:
             listing = get_listing(path, f'.{format_}')
         if not listing:
