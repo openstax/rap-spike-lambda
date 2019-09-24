@@ -22,6 +22,7 @@ Note, this is only intended to be used with a book, not individual pages.
 """
 import io
 import sys
+from functools import partial
 
 import boto3
 import click
@@ -52,7 +53,7 @@ def debug(msg):
 
 
 
-def gen_filepath(type_, ident):
+def gen_filepath(type_, ident, raw_prefix='', baked_prefix='', resource_prefix=''):
     """Given a content type and an ids structure
     produce the S3 filepath to the object.
 
@@ -66,16 +67,16 @@ def gen_filepath(type_, ident):
         ids = ident
 
     func = {
-        'raw-book-json': lambda i: f'{i[-1]}.json',
-        'raw-book-html': lambda i: f'{i[-1]}.html',
-        'raw-page-json': lambda i: f'{i[-1]}.json',
-        'raw-page-html': lambda i: f'{i[-1]}.html',
-        'baked-book-json': lambda i: f'{i[0]}.json',
-        'baked-book-html': lambda i: f'{i[0]}.html',
-        'baked-page-json': lambda i: f'{i[0]}:{i[1]}.json',
-        'baked-page-html': lambda i: f'{i[0]}:{i[1]}.html',
-        'resource': lambda i: f'{i}',
-        'resource-media-type': lambda i: f'{i}-media-type',
+        'raw-book-json': lambda i: f'{raw_prefix}{i[-1]}.json',
+        'raw-book-html': lambda i: f'{raw_prefix}{i[-1]}.html',
+        'raw-page-json': lambda i: f'{raw_prefix}{i[-1]}.json',
+        'raw-page-html': lambda i: f'{raw_prefix}{i[-1]}.html',
+        'baked-book-json': lambda i: f'{baked_prefix}{i[0]}.json',
+        'baked-book-html': lambda i: f'{baked_prefix}{i[0]}.html',
+        'baked-page-json': lambda i: f'{baked_prefix}{i[0]}:{i[1]}.json',
+        'baked-page-html': lambda i: f'{baked_prefix}{i[0]}:{i[1]}.html',
+        'resource': lambda i: f'{resource_prefix}{i}',
+        'resource-media-type': lambda i: f'{resource_prefix}{i}-media-type',
     }[type_]
     return func(ids)
 
@@ -253,7 +254,7 @@ def scrape_version(id, version, host, visited_locs, book=None,
                                       is_composite_page=(page_ident_hash not in raw_pages))
 
 
-def dump_in_bucket(items, raw_bucket_name, baked_bucket_name, resources_bucket_name, region):
+def dump_in_bucket(items, raw_bucket_name, baked_bucket_name, resources_bucket_name, region, gen_filepath):
     s3 = boto3.resource('s3', region_name=region)
     raw_bucket = s3.Bucket(raw_bucket_name)
     baked_bucket = s3.Bucket(baked_bucket_name)
@@ -277,11 +278,12 @@ def dump_in_bucket(items, raw_bucket_name, baked_bucket_name, resources_bucket_n
 @click.option('-v', '--verbose', is_flag=True, help='Enables verbose mode')
 @click.option('-b', '--book', multiple=True)
 @click.option('-h', '--host', default='archive.cnx.org', help='archive hostname')
-@click.argument('raw_bucket')
-@click.argument('baked_bucket')
-@click.argument('resources_bucket')
+@click.option('--raw-bucket', help='The s3 bucket to store raw content')
+@click.option('--baked-bucket', help='The s3 bucket to store baked content')
+@click.option('--resources-bucket', help='The s3 bucket to store resources')
+@click.option('--bucket', help='A single s3 bucket to store content and resources')
 @click.argument('region', default='us-west-2')
-def main(verbose, book, host, raw_bucket, baked_bucket, resources_bucket, region):
+def main(verbose, book, host, raw_bucket, baked_bucket, resources_bucket, bucket, region):
     global VERBOSE
     VERBOSE = verbose
     books = book
@@ -290,15 +292,26 @@ def main(verbose, book, host, raw_bucket, baked_bucket, resources_bucket, region
             "At least one book must be supplied\n"
             "See the --book option"
         )
-    if (raw_bucket.lower() == baked_bucket.lower() or
-        baked_bucket.lower() == resources_bucket.lower() or
-        raw_bucket.lower() == resources_bucket.lower()):
-        raise click.UsageError(
-            "All destination buckets (raw, baked, resources) needs to be different from eachother"
-        )
+    if bucket:
+        raw_bucket = baked_bucket = resources_bucket = bucket
+        raw_prefix = 'raw/'
+        baked_prefix = 'baked/'
+        resource_prefix = 'resources/'
+    else:
+        raw_prefix = baked_prefix = resource_prefix = ''
+        if (raw_bucket.lower() == baked_bucket.lower() or
+            baked_bucket.lower() == resources_bucket.lower() or
+            raw_bucket.lower() == resources_bucket.lower()):
+            raise click.UsageError(
+                "All destination buckets (raw, baked, resources) needs to be different from eachother"
+            )
 
     for book in books:
-        dump_in_bucket(scrape(book, host), raw_bucket, baked_bucket, resources_bucket, region)
+        dump_in_bucket(scrape(book, host), raw_bucket, baked_bucket,
+                       resources_bucket, region,
+                       partial(gen_filepath, raw_prefix=raw_prefix,
+                               baked_prefix=baked_prefix,
+                               resource_prefix=resource_prefix))
 
 
 if __name__ == '__main__':

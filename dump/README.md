@@ -28,7 +28,24 @@ Note: be sure to put them in the same region, suggestion is `US East (Ohio)` (us
   -b 02776133-d49d-49cb-bfaa-67c7f61b25a1 \
   -b caa57dab-41c7-455e-bd6f-f443cda5519c@19.5 \
   -h archive-staging.cnx.org \
-  raw_bucket baked_bucket resources_bucket
+  --raw-bucket raw_bucket \
+  --baked-bucket baked_bucket \
+  --resource-bucket resources_bucket \
+  us-east-2
+```
+
+For single buckets, the raw content is in `raw/`, the baked content is in
+`baked/` and the resources are in `resources/`.
+
+```sh
+./dump-to-bucket.py \
+  -v \
+  -b 0889907c-f0ef-496a-bcb8-2a5bb121717f@8.42 \
+  -b 02776133-d49d-49cb-bfaa-67c7f61b25a1 \
+  -b caa57dab-41c7-455e-bd6f-f443cda5519c@19.5 \
+  -h archive-staging.cnx.org \
+  --bucket my_one_bucket
+  us-east-2
 ```
 
 ## S3 bucket data structures
