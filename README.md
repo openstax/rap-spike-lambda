@@ -14,6 +14,7 @@
   * [Create the rap-distribution stack](#create-the-rap-distribution-stack-in-aws)
   * [Update the stack after changes](#update-the-rap-distribution-after-changes)
 * [Loading the books into S3](#loading-the-books-into-s3)
+* [Using SAM to build and test the Lambda@Edge function]()
 
 ## A3 Planning
 
@@ -138,6 +139,10 @@ Run the following command after the one above to update the stack:
 ## Loading the books into s3
 
 Follow the instructions in [./dump/README.md](./dump/README.md) file.
+
+## Using SAM to build and test the Lambda@Edge function
+
+Follow the instruction in [.sam-app/README.md](./sam-app/README.md) file.
 
 [cnx-archive]: https://github.com/openstax/cnx-archive
 [cnx-db]: https://github.com/openstax/cnx-db

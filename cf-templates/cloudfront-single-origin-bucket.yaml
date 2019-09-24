@@ -22,38 +22,20 @@ Resources:
       BucketName: !Sub 'ce-artifacts-${AWS::StackName}-${AWS::AccountId}'
     Type: 'AWS::S3::Bucket'
 
-  RawBucket:
+  ContentsBucket:
     DeletionPolicy: 'Delete'
     Metadata:
       Comment: 'Bucket to store raw content data'
     Properties:
       AccessControl: 'Private'
-      BucketName: !Sub 'ce-raw-${AWS::StackName}-${AWS::AccountId}'
+      BucketName: !Sub 'ce-contents-${AWS::StackName}-${AWS::AccountId}'
     Type: 'AWS::S3::Bucket'
 
-  BakedBucket:
-    DeletionPolicy: 'Delete'
-    Metadata:
-      Comment: 'Bucket to store baked content data'
-    Properties:
-      AccessControl: 'Private'
-      BucketName: !Sub 'ce-baked-${AWS::StackName}-${AWS::AccountId}'
-    Type: 'AWS::S3::Bucket'
-
-  ResourcesBucket:
-    DeletionPolicy: 'Delete'
-    Metadata:
-      Comment: 'Bucket to store resources referenced by content'
-    Properties:
-      AccessControl: 'Private'
-      BucketName: !Sub 'ce-resources-${AWS::StackName}-${AWS::AccountId}'
-    Type: 'AWS::S3::Bucket'
-
-  RawBucketPolicy:
+  ContentsBucketPolicy:
     Metadata:
       Comment: 'Bucket policy to allow cloudfront to access the data'
     Properties:
-      Bucket: !Ref RawBucket
+      Bucket: !Ref ContentsBucket
       PolicyDocument:
         Statement:
           - Action:
@@ -62,45 +44,13 @@ Resources:
             Principal:
               CanonicalUser: !GetAtt CfOriginAccessIdentity.S3CanonicalUserId
             Resource:
-              - !Sub 'arn:aws:s3:::${RawBucket}/*'
-    Type: 'AWS::S3::BucketPolicy'
-
-  BakedBucketPolicy:
-    Metadata:
-      Comment: 'Bucket policy to allow cloudfront to access the data'
-    Properties:
-      Bucket: !Ref BakedBucket
-      PolicyDocument:
-        Statement:
-          - Action:
-              - 's3:GetObject'
-            Effect: 'Allow'
-            Principal:
-              CanonicalUser: !GetAtt CfOriginAccessIdentity.S3CanonicalUserId
-            Resource:
-              - !Sub 'arn:aws:s3:::${BakedBucket}/*'
-    Type: 'AWS::S3::BucketPolicy'
-
-  ResourcesBucketPolicy:
-    Metadata:
-      Comment: 'Bucket policy to allow cloudfront to access the data'
-    Properties:
-      Bucket: !Ref ResourcesBucket
-      PolicyDocument:
-        Statement:
-          - Action:
-              - 's3:GetObject'
-            Effect: 'Allow'
-            Principal:
-              CanonicalUser: !GetAtt CfOriginAccessIdentity.S3CanonicalUserId
-            Resource:
-              - !Sub 'arn:aws:s3:::${ResourcesBucket}/*'
+              - !Sub 'arn:aws:s3:::${ContentsBucket}/*'
     Type: 'AWS::S3::BucketPolicy'
 
   LambdaEdgeFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../request-handler
+      CodeUri: ../.aws-sam/build/LambdaEdgeFunction/
       Role: !GetAtt LambdaEdgeFunctionRole.Arn
       Runtime: python3.7
       Handler: lambda_function.lambda_handler
@@ -113,7 +63,7 @@ Resources:
       Path: "/"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-        - "arn:aws:iam::aws:policy/service-role/AmazonS3ReadOnlyAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -157,10 +107,11 @@ Resources:
         HttpVersion: 'http1.1'
         IPV6Enabled: false
         Origins:
-          - DomainName: aws.amazon.com
+          - DomainName: !GetAtt ContentsBucket.DomainName
             Id: MainOrigin
-            CustomOriginConfig:
-              OriginProtocolPolicy: match-viewer
+            OriginPath: ''
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CfOriginAccessIdentity}'
         PriceClass: 'PriceClass_All'
     Type: 'AWS::CloudFront::Distribution'
 
@@ -176,15 +127,9 @@ Outputs:
   ArtifactsBucket:
     Description: 'CE Artifacts S3 Bucket'
     Value: !Ref ArtifactsBucket
-  RawBucket:
-    Description: 'CE Raw S3 Bucket'
-    Value: !Ref RawBucket
-  BakedBucket:
-    Description: 'CE Baked S3 Bucket'
-    Value: !Ref BakedBucket
-  ResourcesBucket:
-    Description: 'CE Resources S3 Bucket'
-    Value: !Ref ResourcesBucket
+  ContentsBucket:
+    Description: 'CE Book Contents S3 Bucket'
+    Value: !Ref ContentsBucket
   LambdaEdgeFunction:
     Description: Lambda@Edge handler for content
     Value: !Ref LambdaEdgeFunction.Version

@@ -1,0 +1,36 @@
+{
+  "Records": [
+    {
+      "cf": {
+        "config": {
+          "distributionId": "EXAMPLE"
+        },
+        "request": {
+          "uri": "/baked/02776133-d49d-49cb-bfaa-67c7f61b25a1@8.14:301d5176-9ace-4219-b44b-85dcf781e1e3.html",
+          "method": "GET",
+          "clientIp": "2001:cdba::3257:9652",
+          "headers": {
+            "user-agent": [
+              {
+                "key": "User-Agent",
+                "value": "Test Agent"
+              }
+            ],
+            "host": [
+              {
+                "key": "Host",
+                "value": "d123.cf.net"
+              }
+            ],
+            "cookie": [
+              {
+                "key": "Cookie",
+                "value": "SomeCookie=1; AnotherOne=A; X-Experiment-Name=B"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
