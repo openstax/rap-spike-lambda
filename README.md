@@ -101,7 +101,7 @@ Then: return the proper json
 
 To create the stack run the following using the `aws` cli:
 
-    aws cloudformation deploy --template-file cf-templates/cf-cloudfront-content-buckets.yaml --region us-east-1 --stack-name rap-distribution --tags Project=rap-spike-lambda Application=rap-spike-lambda Environment=dev Owner=Mike
+    aws cloudformation deploy --template-file cf-templates/cloudfront-single-origin-bucket.yaml --region us-east-1 --stack-name rap-distribution --tags Project=rap-spike-lambda Application=rap-spike-lambda Environment=dev Owner=Mike
 
 Note: This step only needs to be run the first time to create the stack. If you need to make updates please follow the
 instructions in [Update the rap-distribution after changes](#update-the-rap-distribution-after-changes).
@@ -125,7 +125,7 @@ the s3 bucket substituted in the proper locations of the template.
 
 To update the rap-distribution stack after a merge run the following: 
 
-    aws cloudformation package --template-file ./cf-templates/cf-cloudfront-content-buckets.yaml \
+    aws cloudformation package --template-file ./cf-templates/cloudfront-single-origin-bucket.yaml \
     --s3-bucket ce-artifacts-rap-distribution-373045849756 --output-template-file ./cf-templates/app-output-sam.yaml
 
 This will output a SAM compiled version of the template that can be used to update the stack.
