@@ -109,16 +109,16 @@ def scrape(book, host, visited_locs=VISITED_LOCS_MARKER):
 
     try:
         id, version = split_ident_hash(book)
+        info(f'Requested Version: {T.bold}{id}@{version}{T.normal}')
     except cnxcommon.ident_hash.IdentHashMissingVersion:
+        info('No version was Given. Retrieving Latest Version')
         id = book
-    base_url = f'https://{host}/contents'
-
-    # Request the latest version
-    url = f'{base_url}/{id}.json'
-    resp = session.get(url)
-    version = resp.json()['version']
-
-    info(f'latest version of requested book: {T.bold}{id}@{version}{T.normal}')
+        base_url = f'https://{host}/contents'
+        url = f'{base_url}/{id}.json'
+        resp = session.get(url)
+        latest_version = resp.json()['version']
+        version = latest_version
+        info(f'Latest Version: {T.bold}{id}@{version}{T.normal}')
 
     # Get the latest version's contents and resources
     # With this we'll have access to the list of past versions
