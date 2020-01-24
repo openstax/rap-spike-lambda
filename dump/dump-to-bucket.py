@@ -260,18 +260,47 @@ def dump_in_bucket(items, raw_bucket_name, baked_bucket_name, resources_bucket_n
     baked_bucket = s3.Bucket(baked_bucket_name)
     resources_bucket = s3.Bucket(resources_bucket_name)
 
+    import threading
+    import time
+
+    def baked_upload(things):
+        data, key, type, media_type = things
+        debug(f'Dumping {T.yellow}{type}{T.normal} into bucket "{baked_bucket_name}" at "{T.green_bold}{key}{T.normal}" ({media_type})')
+        baked_bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
+
+    def res_upload(stuff):
+        data, key, type, media_type = stuff
+        debug(f'Dumping {T.red}{type}{T.normal} into bucket "{resources_bucket_name}" at "{T.green_bold}{key}{T.normal}" ({media_type})')
+        resources_bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
+
+    def raw_upload(articles):
+        data, key, type, media_type = articles
+        debug(f'Dumping {T.blue}{type}{T.normal} into bucket "{raw_bucket_name}" at "{T.green_bold}{key}{T.normal}" ({media_type})')
+        raw_bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
+
+    baked = []
+    resources = []
+    raw = []
+
     for item in items:
         data, media_type, type, ident = item
         key = gen_filepath(type, ident)
+
         if type.startswith('baked'):
-            debug(f'Dumping {T.blue}{type}{T.normal} into bucket "{baked_bucket_name}" at "{T.green_bold}{key}{T.normal}" ({media_type})')
-            baked_bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
+            baked.append((data, key, type, media_type))
         elif type.startswith('resource'):
-            debug(f'Dumping {T.blue}{type}{T.normal} into bucket "{resources_bucket_name}" at "{T.green_bold}{key}{T.normal}" ({media_type})')
-            resources_bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
+            resources.append((data, key, type, media_type))
         else:
-            debug(f'Dumping {T.blue}{type}{T.normal} into bucket "{raw_bucket_name}" at "{T.green_bold}{key}{T.normal}" ({media_type})')
-            raw_bucket.upload_fileobj(data, key, ExtraArgs={'ContentType': media_type})
+            raw.append((data, key, type, media_type))
+
+    for things in baked:
+        a = threading.Thread(target = baked_upload, args=(things,)).start()
+
+    for stuff in resources:
+        b = threading.Thread(target = res_upload, args=(stuff,)).start()
+
+    for articles in raw:
+        c = threading.Thread(target = raw_upload, args=(articles,)).start()
 
 
 @click.command()
