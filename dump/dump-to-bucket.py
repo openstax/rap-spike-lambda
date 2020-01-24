@@ -176,7 +176,6 @@ test_tree_idents = [
 ]
 assert list(flatten_tree_to_ident_hashes(test_tree)) == test_tree_idents
 
-
 def scrape_version(id, version, host, visited_locs, book=None,
                    is_composite_page=False):
     """
@@ -203,7 +202,7 @@ def scrape_version(id, version, host, visited_locs, book=None,
         temperature = 'raw'
         format_ = 'json'
         url = f'{base_raw_url}.{format_}{raw_postfix}'
-        debug(f'Requesting {temperature} JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+        debug(f'Requesting {T.blue}{temperature} JSON {type_}{T.normal} at {T.green}{url}{T.normal}')
         resp = session.get(url)
         yield io.BytesIO(resp.content), 'application/json', f'{temperature}-{type_}-json', [ident_hash_seq[-1]]
 
@@ -214,7 +213,7 @@ def scrape_version(id, version, host, visited_locs, book=None,
         temperature = 'raw'
         format_ = 'html'
         url = f'{base_raw_url}.{format_}{raw_postfix}'
-        debug(f'Requesting {temperature} HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+        debug(f'Requesting {T.blue}{temperature} HTML {type_}{T.normal} at {T.green}{url}{T.normal}')
         resp = session.get(url)
         yield io.BytesIO(resp.content), 'text/html', f'{temperature}-{type_}-html', [ident_hash_seq[-1]]
 
@@ -222,7 +221,7 @@ def scrape_version(id, version, host, visited_locs, book=None,
     temperature = 'baked'
     format_ = 'json'
     url = f'{base_baked_url}.{format_}'
-    debug(f'Requesting {temperature} JSON {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+    debug(f'Requesting {T.yellow}{temperature} JSON {type_}{T.normal} at {T.green}{url}{T.normal}')
     resp = session.get(url)
     yield io.BytesIO(resp.content), 'application/json', f'{temperature}-{type_}-json', ident_hash_seq
 
@@ -233,7 +232,7 @@ def scrape_version(id, version, host, visited_locs, book=None,
     temperature = 'baked'
     format_ = 'html'
     url = f'{base_baked_url}.html'
-    debug(f'Requesting {temperature} HTML {T.bold}{type_}{T.normal} at {T.yellow}{url}{T.normal}')
+    debug(f'Requesting {T.yellow}{temperature} HTML {type_}{T.normal} at {T.green}{url}{T.normal}')
     resp = session.get(url)
     yield io.BytesIO(resp.content), 'text/html', f'{temperature}-{type_}-html', ident_hash_seq
 
@@ -241,7 +240,7 @@ def scrape_version(id, version, host, visited_locs, book=None,
     for res_entity in baked_json['resources']:
         # Request the resource itself
         url = f'https://{host}/resources/{res_entity["id"]}'
-        debug(f'Requesting {T.bold}resource{T.normal} at {T.yellow}{url}{T.normal}')
+        debug(f'Requesting {T.red}resource{T.normal} at {T.green}{url}{T.normal}')
         resp = session.get(url)
         yield io.BytesIO(resp.content), str(res_entity['media_type']), 'resource', res_entity['id']
 
