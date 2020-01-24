@@ -302,6 +302,15 @@ def dump_in_bucket(items, raw_bucket_name, baked_bucket_name, resources_bucket_n
     for articles in raw:
         c = threading.Thread(target = raw_upload, args=(articles,)).start()
 
+    res = []
+    for r in resources:
+        key = r[1]
+        type = r[2]
+        res.append((key, type))
+
+    info("baked_objects: {}".format(len(baked)))
+    info("raw_objects: {}".format(len(raw)))
+    info("resources_objects: {}".format(len(set(res))))
 
 @click.command()
 @click.option('-v', '--verbose', is_flag=True, help='Enables verbose mode')
